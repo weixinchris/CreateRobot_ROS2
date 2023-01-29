@@ -1,0 +1,11 @@
+node_odrive_srv:
+  ros__parameters:
+    cur_limit: 10.0
+    vel_limit: 6.0
+    calibration_current: 3.0
+    brake_resistor: 1
+    dc_max_negative_current: -1.0
+    pole_pairs: 10
+    torque_constant: 1.0
+    cpr: 16384
+    connection_timeout: 15
