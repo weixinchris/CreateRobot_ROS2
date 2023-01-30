@@ -6,6 +6,7 @@ import odrive
 from odrive.enums import *
 from rclpy.node import Node
 from std_srvs.srv import Trigger
+from odrive_interfaces.srv import AxisState, PositionControl, VelocityControl
 
 class OdriveNode(Node):
     def __init__(self, name):
@@ -24,14 +25,35 @@ class OdriveNode(Node):
                 ('connection_timeout',rclpy.Parameter.Type.INTEGER)
             ]
         )
-        self.get_logger().info("Starting Odrive service...")
+
+        self.Node_odrive = odrive.find_any(
+                timeout=self.get_parameter(
+                    'connection_timeout'
+                ).get_parameter_value().integer_value
+            )
+
+        self.get_logger().info("odrive service - connect")
         self.connect_odrive_service = self.create_service(
             Trigger,
             'connect_odrive',
-            self.connect_odrive_callback
+            self.__connect_odrive_callback
+        ) 
+
+        self.get_logger().info("odrive service - request_state")
+        self.odrive_request_state_service = self.create_service(
+            AxisState,
+            'request_state',
+            self.__request_state_callback
         )
 
-    def connect_odrive_callback(self, request: Trigger.Request, response: Trigger.Response)->None:
+    # def test_call_back(self, request, response):
+    #     response.state = request.axis + request.state                                             # 完成加法求和计算，将结果放到反馈的数据中
+    #     response.message = "Summization success"
+    #     response.success = True
+    #     self.get_logger().info('Incoming request\na: %d b: %d' % (request.axis, request.state))   # 输出日志信息，提示已经完成加法求和计算
+    #     return response   
+
+    def __connect_odrive_callback(self, request: Trigger.Request, response: Trigger.Response)->None:
         self.get_logger().info("Loading parameters for Odrive...")
         self.cur_limit = self.get_parameter('cur_limit').get_parameter_value().double_value
         self.vel_limit = self.get_parameter('vel_limit').get_parameter_value().double_value
@@ -45,11 +67,6 @@ class OdriveNode(Node):
         try:
             self.get_logger().info("Connecting to Odrive...")            
             # Find a connected ODrive (this will block until you connect one)
-            self.Node_odrive = odrive.find_any(
-                timeout=self.get_parameter(
-                    'connection_timeout'
-                ).get_parameter_value().integer_value
-            )
             self.get_logger().info(f'ODrive connected, ODrive bus voltage = {self.Node_odrive.vbus_voltage}')
             response.success=True
             response.message = f'Connected to {self.Node_odrive.serial_number}'
@@ -92,7 +109,31 @@ class OdriveNode(Node):
             response.success = False
             response.message = f'Unexpected error: {sys.exc_info()[0]}'
         return response
-        
+    
+    def __request_state_callback(self, staterequest: AxisState.Request, stateresponse: AxisState.Response)->AxisState.Response: 
+        if self.Node_odrive:
+            print(type(self.Node_odrive))
+            self.get_logger().info(f'Odrive request state')
+            match int(staterequest.axis):
+                case 0:
+                    self.Node_odrive.axis0.requested_state = staterequest.state
+                    self.Node_odrive.axis0.watchdog_feed()
+                    stateresponse.success = True
+                    stateresponse.state = self.Node_odrive.axis0.current_state
+                    stateresponse.message = f'Odrive State = {staterequest.state}'
+                case 1:
+                    self.Node_odrive.axis1.requested_state = staterequest.state
+                    self.Node_odrive.axis1.watchdog_feed()
+                    stateresponse.success = True
+                    stateresponse.state = self.Node_odrive.axis1.current_state
+                    stateresponse.message = f'Odrive State = {staterequest.state}'
+                case other:
+                    stateresponse.success = False
+                    stateresponse.message = "Axis not exist"
+        else:
+            stateresponse.success = False
+            stateresponse.message = f'ODrive not ready'
+        return stateresponse
         
 def main(args=None):
     rclpy.init(args=args)
