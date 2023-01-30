@@ -25,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'node_odrive_srv = odrivelib.node_odrive_srv:main',
-            'node_odrive_cli = odrivelib.node_odrive_cli:main',
-        ],
+            'node_odrive_cli = odrivelib.node_odrive_cli:main',        ],
     },
 )

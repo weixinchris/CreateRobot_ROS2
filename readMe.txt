@@ -38,3 +38,21 @@ config = os.path.join(
 
 5. Launch a node with yaml file loaded
 ros2 run odrivelib odrive_node --ros-args --params-file ~/cr_ws/src/odrivelib/config/odrive_init.yaml
+
+Add a client
+
+self.connect_client = self.create_client(
+    Trigger,
+    'connect_odrive'
+)
+self.state_client = self.create_client(
+    AxisState,
+    'request_state'
+)
+while not self.connect_client.wait_for_service(timeout_sec=1.0):                  
+    self.get_logger().info('Odrive connect service is not available.')
+while not self.state_client.wait_for_service(timeout_sec=1.0):             
+    self.get_logger().info('Odrive request_state is not available.')
+
+NOTE: the name of the client has to be the same!
+for example: the first client has a name of connect_client, the second client has a name of state_client
