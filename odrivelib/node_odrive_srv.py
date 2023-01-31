@@ -1,12 +1,14 @@
 from __future__ import print_function
 import sys
+import numbers
 import rclpy
 import time
 import odrive
 from odrive.enums import *
+from odrivelib import constants
 from rclpy.node import Node
 from std_srvs.srv import Trigger
-from odrive_interfaces.srv import AxisState, PositionControl, VelocityControl
+from odrive_interfaces.srv import AxisState, AxisModes, PositionControl, VelocityControl
 
 class OdriveNode(Node):
     def __init__(self, name):
@@ -46,12 +48,12 @@ class OdriveNode(Node):
             self.__request_state_callback
         )
 
-    # def test_call_back(self, request, response):
-    #     response.state = request.axis + request.state                                             # 完成加法求和计算，将结果放到反馈的数据中
-    #     response.message = "Summization success"
-    #     response.success = True
-    #     self.get_logger().info('Incoming request\na: %d b: %d' % (request.axis, request.state))   # 输出日志信息，提示已经完成加法求和计算
-    #     return response   
+        self.get_logger().info("odrive service - control modes")
+        self.odrive_control_modes_service = self.create_service(
+            AxisModes,
+            'control_modes',
+            self.__control_modes_callback
+        )
 
     def __connect_odrive_callback(self, request: Trigger.Request, response: Trigger.Response)->None:
         self.get_logger().info("Loading parameters for Odrive...")
@@ -112,7 +114,6 @@ class OdriveNode(Node):
     
     def __request_state_callback(self, staterequest: AxisState.Request, stateresponse: AxisState.Response)->AxisState.Response: 
         if self.Node_odrive:
-            print(type(self.Node_odrive))
             self.get_logger().info(f'Odrive request state')
             match int(staterequest.axis):
                 case 0:
@@ -134,7 +135,39 @@ class OdriveNode(Node):
             stateresponse.success = False
             stateresponse.message = f'ODrive not ready'
         return stateresponse
-        
+
+    def __control_modes_callback(self, controlrequest: AxisModes.Request, controlresponse: AxisModes.Response)->AxisModes.Response: 
+        if self.Node_odrive:
+            self.get_logger().info(f'Odrive request state')
+            match int(controlrequest.axis):
+                case 0:
+                    self.Node_odrive.axis0.controller.config.input_mode = controlrequest.control_mode
+                    self.Node_odrive.axis0.watchdog_feed()
+                    controlresponse.success = True
+                    controlresponse.current_control_mode = self.Node_odrive.axis0.controller.config.input_mode
+                    controlresponse.message = f'Odrive control mode = {self.__print_A_name(controlrequest.control_mode,constants.CONTROL_MODES_LIST)}'
+                case 1:
+                    self.Node_odrive.axis1.controller.config.input_mode = controlrequest.control_mode
+                    self.Node_odrive.axis1.watchdog_feed()
+                    controlresponse.success = True
+                    controlresponse.current_control_mode = self.Node_odrive.axis1.controller.config.input_mode
+                    controlresponse.message = f'Odrive control mode = {self.__print_A_name(controlrequest.control_mode,constants.CONTROL_MODES_LIST)}'
+                case other:
+                    controlresponse.success = False
+                    controlresponse.message = "Axis not exist"
+        else:
+            controlresponse.success = False
+            controlresponse.message = f'ODrive not ready'
+        return controlresponse
+
+    def __print_A_name(self,name_index:int, list:list)->str:
+        print(type(name_index))
+        if int(name_index) >= 0 and int(name_index) <= 8:
+            ans = str(list[name_index])
+        else:
+            ans = "error"
+        return ans
+
 def main(args=None):
     rclpy.init(args=args)
     node = OdriveNode("node_odrive_srv")
