@@ -1,7 +1,7 @@
 node_odrive_srv:
   ros__parameters:
     cur_limit: 10.0
-    vel_limit: 2.0
+    vel_limit: 4.0
     calibration_current: 3.0
     brake_resistor: 1
     dc_max_negative_current: -1.0
@@ -9,3 +9,10 @@ node_odrive_srv:
     torque_constant: 1.0
     cpr: 16384
     connection_timeout: 15
+
+    # vel_ramp_rate: 0.5
+    # input_filter_bandwidth: 2.0
+    # trap_traj_vel_limit: 2.0
+    # trap_traj_accel_limit: 1.2
+    # trap_traj_decel_limit: 1.2
+    # inertia: 0
