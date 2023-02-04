@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys
-import numbers
+from sensor_msgs.msg import JointState 
 import rclpy
 import time
 import odrive
@@ -25,7 +25,8 @@ class OdriveNode(Node):
                 ('pole_pairs',rclpy.Parameter.Type.INTEGER),
                 ('torque_constant',rclpy.Parameter.Type.DOUBLE),
                 ('cpr',rclpy.Parameter.Type.INTEGER),
-                ('connection_timeout',rclpy.Parameter.Type.INTEGER)
+                ('connection_timeout',rclpy.Parameter.Type.INTEGER),
+                ('joint_state.topic',rclpy.Parameter.Type.STRING)
             ]
         )
 
@@ -62,6 +63,21 @@ class OdriveNode(Node):
             'position_cmd',
             self.__position_cmd_callback
         )
+
+        self.get_logger().info("odrive service - velocity control")
+        self.vel_cmd_service = self.create_service(
+            VelocityControl,
+            'velocity_cmd',
+            self.__velocity_cmd_callback
+        )
+
+        self.get_logger().info("odrive msg - joint state")
+        self.jointstate_pub = self.create_publisher(
+            JointState,
+            "Odrive_joint_topic",
+            10
+        )
+        self.timer = self.create_timer(0.1, self.odrive_pub_callback)
 
     def __connect_odrive_callback(self, request: Trigger.Request, response: Trigger.Response)->None:
         self.get_logger().info("Loading parameters for Odrive...")
@@ -179,7 +195,6 @@ class OdriveNode(Node):
     def __position_cmd_callback(self, pos_cmd_request: PositionControl.Request, pos_cmd_response: PositionControl.Response)->PositionControl.Response:
         self.get_logger().info(f'Odrive position control')
         if self.__is_control_mode_service_called:
-            self.get_logger().info(f'enter')
             match int(pos_cmd_request.axis):
                 case 0:
                     self.Node_odrive.axis0.controller.input_pos = pos_cmd_request.turns
@@ -209,7 +224,54 @@ class OdriveNode(Node):
                     pos_cmd_response.success = True
                     pos_cmd_response.message = f'{str(pos_cmd_request.turns)}'
         return pos_cmd_response
+    
+    def __velocity_cmd_callback(self, vel_cmd_request: VelocityControl.Request, vel_cmd_response: VelocityControl.Response)->VelocityControl.Response:
+        self.get_logger().info(f'Odrive velocity control')
+        if self.__is_control_mode_service_called:
+            match vel_cmd_request.axis:
+                case 0:
+                    self.Node_odrive.axis0.controller.input_vel = vel_cmd_request.turns_s
+                    self.Node_odrive.axis0.watchdog_feed()
+                    vel_cmd_response.success = True
+                    vel_cmd_response.message = f'{str(vel_cmd_request.turns_s)}'
+                case 1:
+                    self.Node_odrive.axis1.controller.input_vel = vel_cmd_request.turns_s
+                    self.Node_odrive.axis1.watchdog_feed()
+                    vel_cmd_response.success = True
+                    vel_cmd_response.message = f'{str(vel_cmd_request.turns_s)}'
+        else:
+            self.Node_odrive.axis0.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+            self.Node_odrive.axis0.controller.config.vel_ramp_rate = 0.5
+            self.Node_odrive.axis0.controller.config.input_mode = INPUT_MODE_VEL_RAMP
+            self.Node_odrive.axis1.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+            self.Node_odrive.axis1.controller.config.vel_ramp_rate = 0.5
+            self.Node_odrive.axis1.controller.config.input_mode = INPUT_MODE_VEL_RAMP
+            self.get_logger().info(f'vel_input')
+            match int(vel_cmd_request.axis):
+                case 0:
+                    self.Node_odrive.axis0.controller.input_vel = vel_cmd_request.turns_s
+                    self.Node_odrive.axis0.watchdog_feed()
+                    vel_cmd_response.success = True
+                    vel_cmd_response.message = f'{str(vel_cmd_request.turns_s)}'
+                case 1:
+                    self.Node_odrive.axis1.controller.input_vel = vel_cmd_request.turns_s
+                    self.Node_odrive.axis1.watchdog_feed()
+                    vel_cmd_response.success = True
+                    vel_cmd_response.message = f'{str(vel_cmd_request.turns_s)}'
 
+        return vel_cmd_response
+
+    def odrive_pub_callback(self)->None:
+        odrive_state = JointState()
+        if self.Node_odrive:
+            odrive_state.header.stamp = self.get_clock().now().to_msg()
+            odrive_state.position = [self.Node_odrive.axis0.encoder.pos_estimate,
+                            self.Node_odrive.axis1.encoder.pos_estimate]
+            odrive_state.velocity = [self.Node_odrive.axis0.encoder.vel_estimate,
+                            self.Node_odrive.axis1.encoder.vel_estimate]
+            self.jointstate_pub.publish(odrive_state)
+        else:
+            self.get_logger().debug('ODrive not ready')
 
     def __print_A_name(self,name_index:int, list:list)->str:
         print(type(name_index))

@@ -25,6 +25,10 @@ class odriveTest(Node):
             PositionControl,
             'position_cmd'
         )
+        self.vel_cmd_client = self.create_client(
+            VelocityControl,
+            'velocity_cmd'
+        )
         while not self.connect_client.wait_for_service(timeout_sec=1.0):                  
             self.get_logger().info('Odrive connect service is not available.')
         while not self.state_client.wait_for_service(timeout_sec=1.0):             
@@ -33,6 +37,8 @@ class odriveTest(Node):
             self.get_logger().info('Odrive control_modes service is not available.')
         while not self.pos_cmd_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Odrive pos_cmd service is not available.')
+        while not self.vel_cmd_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Odrive vel_cmd service is not available.')
 
         self.state_request = AxisState.Request()  
         self.state_response = AxisState.Response()
@@ -42,6 +48,8 @@ class odriveTest(Node):
         self.control_modes_response = AxisModes.Response()
         self.pos_cmd_request = PositionControl.Request()
         self.pos_cmd_response = PositionControl.Response()
+        self.vel_cmd_request = VelocityControl.Request()
+        self.vel_cmd_response = VelocityControl.Response()
 
     def __send_connect_request(self):
         self.connect_future = self.connect_client.call_async(self.connect_request)
@@ -90,6 +98,15 @@ class odriveTest(Node):
         self.pos_cmd_future = self.pos_cmd_client.call_async(self.pos_cmd_request)
         rclpy.spin_until_future_complete(self, self.pos_cmd_future)
         return self.pos_cmd_future.result()
+
+    def __send_vel_cmd_request(self):
+        axis_num = int(input("Please enter the axis number (0 or 1): "))
+        input_turn = float(input("Please enter velocity in turns/s: "))
+        self.vel_cmd_request.axis = axis_num
+        self.vel_cmd_request.turns_s = input_turn
+        self.vel_cmd_future = self.vel_cmd_client.call_async(self.vel_cmd_request)
+        rclpy.spin_until_future_complete(self, self.vel_cmd_future)
+        return self.vel_cmd_future.result()
     
     def response_connect(self):
         response = self.__send_connect_request()
@@ -114,6 +131,12 @@ class odriveTest(Node):
         if(response.success == True):
             self.get_logger().info("Position cmd successful!")
             self.get_logger().info(f'Move steps: {response.message}')
+
+    def response_vel_cmd(self):
+        response = self.__send_vel_cmd_request()
+        if(response.success == True):
+            self.get_logger().info("Velocity cmd successful!")
+            self.get_logger().info(f'Input velocity: {response.message}')
     
 def main(args=None):
     rclpy.init(args=args)
@@ -131,6 +154,8 @@ def main(args=None):
                 node.response_controlmodes()
             case 4:
                 node.response_pos_cmd()
+            case 5:
+                node.response_vel_cmd()
             
     node.destroy_node()
     rclpy.shutdown()

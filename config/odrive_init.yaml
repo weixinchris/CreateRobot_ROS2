@@ -9,10 +9,3 @@ node_odrive_srv:
     torque_constant: 1.0
     cpr: 16384
     connection_timeout: 15
-
-    # vel_ramp_rate: 0.5
-    # input_filter_bandwidth: 2.0
-    # trap_traj_vel_limit: 2.0
-    # trap_traj_accel_limit: 1.2
-    # trap_traj_decel_limit: 1.2
-    # inertia: 0

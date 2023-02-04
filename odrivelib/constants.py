@@ -2,7 +2,8 @@ ODRIVE_SERVICE_API_LIST = [
     "1. Initialize Odrive",
     "2. Request States",
     "3. Control Modes",
-    "4. Position Control"
+    "4. Position Control",
+    "5. Velocity Control"
 ]
 REQUEST_STATE_LIST=[
     # ODrive.Axis.AxisState
