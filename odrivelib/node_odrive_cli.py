@@ -3,7 +3,7 @@ import sys
 from rclpy.node import Node
 from odrive.enums import *
 from std_srvs.srv import Trigger
-from odrivelib import constants
+from constants import constants
 from odrive_interfaces.srv import AxisState, AxisModes, PositionControl, VelocityControl
 
 class odriveTest(Node):
