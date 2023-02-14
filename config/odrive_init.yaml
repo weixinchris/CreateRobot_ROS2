@@ -9,3 +9,4 @@ node_odrive_srv:
     torque_constant: 1.0
     cpr: 16384
     connection_timeout: 15
+    joint_state.topic: "Odrive_joint_topic"

@@ -5,7 +5,7 @@ import rclpy
 import time
 import odrive
 from odrive.enums import *
-from odrivelib import constants
+from odrivelib.constants import *
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from odrive_interfaces.srv import AxisState, AxisModes, PositionControl, VelocityControl
@@ -74,7 +74,9 @@ class OdriveNode(Node):
         self.get_logger().info("odrive msg - joint state")
         self.jointstate_pub = self.create_publisher(
             JointState,
-            "Odrive_joint_topic",
+            self.get_parameter(
+                'Odrive_joint_topic'
+            ).get_parameter_value().string_value,
             10
         )
         self.timer = self.create_timer(0.1, self.odrive_pub_callback)

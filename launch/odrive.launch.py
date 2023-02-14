@@ -17,4 +17,11 @@ def generate_launch_description():
             output='screen',
             parameters = [config]
         ),
+        Node(
+            package='odrivelib',
+            executable='node_odrive_pub',
+            # name="node_odrive",
+            output='screen',
+            parameters = [config]
+        ),
     ])
